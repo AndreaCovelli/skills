@@ -855,6 +855,7 @@ export async function updateProjectSkills(
     let tempDir: string | null = null;
     let deletedSkills: string[] = [];
     let resolvedPaths: Map<string, string> | null = null;
+    let skillsToUpdate = skillsForSource;
 
     if (cloneSource === null) {
       failCount += skillsForSource.length;
@@ -886,6 +887,33 @@ export async function updateProjectSkills(
       );
       deletedSkills = resolution.deletedSkills;
       resolvedPaths = resolution.resolvedPaths;
+
+      const deletedSkillSet = new Set(deletedSkills);
+      skillsToUpdate = [];
+      for (const skill of skillsForSource) {
+        if (deletedSkillSet.has(skill.name)) continue;
+
+        const resolvedPath = resolvedPaths.get(skill.name);
+        if (!resolvedPath) continue;
+
+        // A moved skill must be reinstalled even when its contents are unchanged
+        // so the add flow can rewrite the project lock with its canonical path.
+        if (resolvedPath !== skill.entry.skillPath) {
+          skillsToUpdate.push(skill);
+          continue;
+        }
+
+        try {
+          const latestHash = await computeSkillFolderHash(join(tempDir, dirname(resolvedPath)));
+          if (latestHash !== skill.entry.computedHash) {
+            skillsToUpdate.push(skill);
+          }
+        } catch {
+          // If only hashing fails, preserve the existing update behavior for
+          // this skill. Clone or discovery failures still fail closed below.
+          skillsToUpdate.push(skill);
+        }
+      }
     } catch (error) {
       console.log(`${DIM}✗ Failed to check for deleted skills from ${source}${RESET}`);
     } finally {
@@ -899,7 +927,7 @@ export async function updateProjectSkills(
       continue;
     }
 
-    const remainingSkills = skillsForSource.filter((s) => !deletedSkills.includes(s.name));
+    const remainingSkills = skillsToUpdate.filter((s) => !deletedSkills.includes(s.name));
 
     for (const skill of remainingSkills) {
       const safeName = sanitizeMetadata(skill.name);
