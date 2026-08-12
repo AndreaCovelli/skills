@@ -1,12 +1,17 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
-import { join, dirname, relative, sep } from 'path';
+import { basename, join, dirname, relative, sep } from 'path';
 import { fileURLToPath } from 'url';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
 import { readSkillLock, getGitHubToken, type SkillLockEntry } from './skill-lock.ts';
-import { computeSkillFolderHash, readLocalLock, type LocalSkillLockEntry } from './local-lock.ts';
+import {
+  computeSkillFileHash,
+  computeSkillFolderHash,
+  readLocalLock,
+  type LocalSkillLockEntry,
+} from './local-lock.ts';
 import {
   formatSourceInput,
   buildUpdateInstallSource,
@@ -904,7 +909,11 @@ export async function updateProjectSkills(
         }
 
         try {
-          const latestHash = await computeSkillFolderHash(join(tempDir, dirname(resolvedPath)));
+          const skillDir = join(tempDir, dirname(resolvedPath));
+          const latestHash =
+            skill.entry.computedHashScope === 'skill-file'
+              ? await computeSkillFileHash(skillDir, basename(resolvedPath))
+              : await computeSkillFolderHash(skillDir);
           if (latestHash !== skill.entry.computedHash) {
             skillsToUpdate.push(skill);
           }
