@@ -456,7 +456,9 @@ describe('Update Cleanup Unit Tests', () => {
 
       const result = await updateProjectSkills({ yes: true });
 
-      expect(localLock.computeSkillFolderHash).toHaveBeenCalledWith('/tmp/repo/skills/skill-a');
+      expect(localLock.computeSkillFolderHash).toHaveBeenCalledWith(
+        join('/tmp/repo', 'skills', 'skill-a')
+      );
       expect(spawnSync).not.toHaveBeenCalled();
       expect(result).toEqual({ successCount: 0, failCount: 0, foundCount: 1 });
     });
@@ -482,7 +484,7 @@ describe('Update Cleanup Unit Tests', () => {
 
       const result = await updateProjectSkills({ yes: true });
 
-      expect(localLock.computeSkillFileHash).toHaveBeenCalledWith('/tmp/repo', 'SKILL.md');
+      expect(localLock.computeSkillFileHash).toHaveBeenCalledWith(join('/tmp/repo'), 'SKILL.md');
       expect(localLock.computeSkillFolderHash).not.toHaveBeenCalled();
       expect(spawnSync).not.toHaveBeenCalled();
       expect(result).toEqual({ successCount: 0, failCount: 0, foundCount: 1 });
